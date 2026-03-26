@@ -147,11 +147,13 @@ function App() {
 
   // ── Boot ──
   useEffect(() => {
-    axios.get("http://localhost:8000/")
+    const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+    axios.get(`${BASE_URL}/`)
       .then(() => setApiStatus("online"))
       .catch(() => setApiStatus("offline"));
 
-    axios.get("http://localhost:8000/api/graph")
+    axios.get(`${BASE_URL}/api/graph`)
       .then(res => {
         const g = { nodes: res.data.nodes || [], edges: res.data.edges || [] };
         setGraphData(g);
@@ -229,7 +231,8 @@ function App() {
     setSelectedNode(null);
 
     try {
-      const res = await axios.get(`http://localhost:8000/api/query?q=${encodeURIComponent(q)}`);
+      const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const res = await axios.get(`${BASE_URL}/api/query?q=${encodeURIComponent(q)}`);
       console.log("[api/query]", res.data);
       const answer = extractAnswer(res.data);
       setChatHistory(prev => [...prev, { role: "ai", content: answer }]);

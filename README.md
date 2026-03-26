@@ -187,10 +187,27 @@ npm install
 npm run dev                  # Starts on http://localhost:5173
 ```
 
-### Environment Variables
+### Environment Variables (`backend/.env`)
 ```
 GEMINI_API_KEY=your_key_here
 ```
+
+---
+
+## Production Deployment
+
+### Backend (Render)
+1. Link your GitHub repo to Render as a Web Service.
+2. Build Command: `pip install -r requirements.txt && python ingest.py`
+3. Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. Set `GEMINI_API_KEY` in Render Environment Variables.
+
+### Frontend (Netlify)
+1. Link your GitHub repo to Netlify.
+2. Build Command: `npm run build`
+3. Publish Directory: `dist`
+4. Add Environment Variable:
+   - `VITE_API_URL` = `<your-render-backend-url>` (e.g. `https://o2c-backend-6ojv.onrender.com`)
 
 ---
 

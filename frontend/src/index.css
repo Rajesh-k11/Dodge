@@ -1,0 +1,2 @@
+/* Override standard Vite css to use App.css cleanly */
+@import './App.css';

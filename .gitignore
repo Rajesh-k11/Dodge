@@ -1,0 +1,52 @@
+# .gitignore for O2C Graph Intelligence System
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment
+.env
+*.env.local
+
+# SQLite database (generated — not committed)
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+node_modules/
+dist/
+.next/
+
+# Build output
+frontend/dist/
+frontend/build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+*.txt
+
+# Data (large JSONL files)
+backend/data/

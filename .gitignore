@@ -48,5 +48,3 @@ Thumbs.db
 *.log
 *.txt
 
-# Data (large JSONL files)
-backend/data/

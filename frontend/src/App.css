@@ -396,3 +396,31 @@ body {
 .chat-input button:hover:not(:disabled) { background: #374151; }
 .chat-input button:active:not(:disabled){ transform: scale(0.97); }
 .chat-input button:disabled { opacity: 0.38; cursor: not-allowed; background: #9ca3af; }
+
+/* ── Mobile Responsiveness ── */
+@media (max-width: 768px) {
+  .workspace {
+    flex-direction: column;
+  }
+  .graph-area {
+    min-height: 40vh;
+    width: 100%;
+  }
+  .chat-panel {
+    width: 100%;
+    min-width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    flex: 1; /* Take remaining screen space */
+  }
+  .node-popover {
+    left: 10px;
+    right: 10px;
+    width: auto;
+  }
+  .filter-panel {
+    width: max-content;
+    max-width: 90vw;
+  }
+}
+

@@ -1,7 +1,27 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import axios from 'axios';
+import API_BASE_URL from './config/api';
 import GraphView from './GraphView';
 import './App.css';
+
+// Configure Axios with 5000ms timeout and 2 retries
+axios.defaults.timeout = 5000;
+
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const config = error.config;
+    if (!config) return Promise.reject(error);
+    
+    config.__retryCount = config.__retryCount || 0;
+    if (config.__retryCount >= 2) {
+      return Promise.reject(error);
+    }
+    
+    config.__retryCount += 1;
+    return axios(config);
+  }
+);
 
 // ─── Node type config ─────────────────────────────────────────────────────────
 const NODE_TYPES = {
@@ -147,18 +167,30 @@ function App() {
 
   // ── Boot ──
   useEffect(() => {
-    const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-    axios.get(`${BASE_URL}/`)
+    axios.get(`${API_BASE_URL}/`)
       .then(() => setApiStatus("online"))
-      .catch(() => setApiStatus("offline"));
+      .catch((err) => {
+        console.error("API Status Check Failed:", err.message);
+        setApiStatus("offline");
+      });
 
-    axios.get(`${BASE_URL}/api/graph`)
+    setIsLoading(true);
+    axios.get(`${API_BASE_URL}/api/graph`)
       .then(res => {
+        if (!res.data) throw new Error("Empty response");
         const g = { nodes: res.data.nodes || [], edges: res.data.edges || [] };
         setGraphData(g);
       })
-      .catch(err => console.error("Graph fetch:", err));
+      .catch(err => {
+        console.error("Graph fetch error:", err.message);
+        let errorMsg = "Failed to load graph data.";
+        if (err.code === 'ECONNABORTED') errorMsg = "Request timed out.";
+        else if (!err.response) errorMsg = "Network error while fetching graph.";
+        setChatHistory(prev => [...prev, { role: "error", content: `⚠️ ${errorMsg}` }]);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
@@ -231,8 +263,12 @@ function App() {
     setSelectedNode(null);
 
     try {
-      const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-      const res = await axios.get(`${BASE_URL}/api/query?q=${encodeURIComponent(q)}`);
+      const res = await axios.post(`${API_BASE_URL}/api/query`, { query: q });
+      
+      if (!res.data) {
+        throw new Error("Empty response");
+      }
+      
       console.log("[api/query]", res.data);
       const answer = extractAnswer(res.data);
       setChatHistory(prev => [...prev, { role: "ai", content: answer }]);
@@ -242,8 +278,13 @@ function App() {
         const graph = convertToGraph(rows);
         setGraphData(graph);
       }
-    } catch {
-      setChatHistory(prev => [...prev, { role: "error", content: "Query failed. Please try again." }]);
+    } catch (err) {
+      let errorMsg = "Query failed. Please try again.";
+      if (err.code === 'ECONNABORTED') errorMsg = "Request timed out. The server took too long to respond.";
+      else if (!err.response) errorMsg = "Network error. Please check your connection.";
+      else if (err.message === "Empty response") errorMsg = "Received an empty response from the server.";
+      
+      setChatHistory(prev => [...prev, { role: "error", content: `⚠️ ${errorMsg}` }]);
     } finally {
       setIsLoading(false);
     }

@@ -1,7 +1,7 @@
 import os
 import time
 import logging
-import google.generativeai as genai
+from groq import Groq
 from dotenv import load_dotenv
 
 from backend.services.db import execute_query
@@ -10,11 +10,12 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-api_key = os.getenv("GEMINI_API_KEY")
+api_key = os.getenv("GROQ_API_KEY")
+client = None
 if api_key:
-    genai.configure(api_key=api_key)
+    client = Groq(api_key=api_key)
 else:
-    logger.warning("GEMINI_API_KEY environment variable is not set.")
+    logger.warning("GROQ_API_KEY environment variable is not set.")
 
 _SCHEMA = """
   - products, product_descriptions, product_plants, product_storage_locations, plants
@@ -31,12 +32,16 @@ def _is_quota_error(exc: Exception) -> bool:
     msg = str(exc).lower()
     return "429" in msg or "quota" in msg or "rate" in msg or "resource_exhausted" in msg
 
-def _generate_with_retry(model, prompt: str, max_retries: int = 2) -> str:
-    """Call model.generate_content with exponential backoff on quota errors."""
+def _generate_with_retry(prompt: str, max_retries: int = 2) -> str:
+    """Call Groq API with exponential backoff on quota errors."""
     for attempt in range(max_retries + 1):
         try:
-            response = model.generate_content(prompt)
-            return response.text.strip()
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1
+            )
+            return response.choices[0].message.content.strip()
         except Exception as e:
             if _is_quota_error(e) and attempt < max_retries:
                 wait = 2 ** attempt  # 1s, 2s
@@ -50,12 +55,10 @@ def ask_database(query: str) -> dict:
     if not query or not str(query).strip():
         return {"error": "Invalid query. Please provide a non-empty string."}
 
-    if not api_key:
-        return {"error": "GEMINI_API_KEY is not configured on the server."}
+    if not client:
+        return {"error": "GROQ_API_KEY is not configured on the server."}
 
     try:
-        model = genai.GenerativeModel("gemini-2.0-flash")
-
         prompt = f"""You are an expert SQL assistant for an SAP Order-to-Cash (O2C) SQLite database.
 Write a valid SQLite SELECT query for the question below.
 Return ONLY the raw SQL — no markdown, no backticks, no explanation.
@@ -65,7 +68,7 @@ Available tables:{_SCHEMA}
 Question: {query}"""
 
         try:
-            sql_query = _generate_with_retry(model, prompt)
+            sql_query = _generate_with_retry(prompt)
         except Exception as e:
             if _is_quota_error(e):
                 logger.warning(f"[llm] Quota exceeded after retries: {e}")
@@ -73,10 +76,12 @@ Question: {query}"""
             raise
 
         # Strip markdown fences if any
-        for fence in ("```sql", "```"):
+        for fence in ("```sql", "```", "'''"):
             if sql_query.startswith(fence):
                 sql_query = sql_query[len(fence):]
         if sql_query.endswith("```"):
+            sql_query = sql_query[:-3]
+        if sql_query.endswith("'''"):
             sql_query = sql_query[:-3]
         sql_query = sql_query.strip()
 
@@ -96,3 +101,4 @@ Question: {query}"""
     except Exception as e:
         logger.error(f"[llm] Unexpected error: {e}")
         return {"error": "Internal service error while processing the request."}
+

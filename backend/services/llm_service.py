@@ -32,10 +32,31 @@ def ask_database(query: str) -> dict:
         model = genai.GenerativeModel("gemini-2.5-flash")
         
         prompt = f"""
-        You are an expert SQL assistant for an Order-to-Cash (O2C) system. 
-        Given the following natural language query, write a valid SQLite query to retrieve the data.
-        Return ONLY the raw SQL query as plain text, without any markdown formatting, backticks, or explanation.
-        
+        You are an expert SQL assistant for an SAP Order-to-Cash (O2C) SQLite database.
+        Given the following natural language query, write a valid SQLite SELECT query.
+        Return ONLY the raw SQL query as plain text — no markdown, no backticks, no explanation.
+
+        The database contains these tables:
+          - products               (product, productType, product_old_id, product_group, division, industry_sector, base_unit, gross_weight, net_weight, weight_unit, created_by_user, creation_date, last_change_date, is_marked_for_deletion)
+          - product_descriptions   (product, language, product_description)
+          - product_plants         (product, plant, profit_center, valuation_type)
+          - product_storage_locations (product, plant, storage_location)
+          - plants                 (plant, plant_name, country, region, company_code)
+          - business_partners      (business_partner, business_partner_category, business_partner_type, first_name, last_name, organization_name, industry, creation_date)
+          - business_partner_addresses (business_partner, address_id, street, house_number, city, postal_code, country, region)
+          - customer_company_assignments (customer, company_code, account_group, reconciliation_account, payment_terms)
+          - customer_sales_area_assignments (customer, sales_org, distribution_channel, division, customer_group, price_list)
+          - sales_order_headers    (sales_order, sales_org, distribution_channel, division, sold_to_party, ship_to_party, document_date, delivery_date, net_value, currency, document_type, created_by_user, creation_date)
+          - sales_order_items      (sales_order, sales_order_item, product, plant, order_quantity, base_unit, net_price, currency, item_category)
+          - sales_order_schedule_lines (sales_order, sales_order_item, schedule_line, requested_delivery_date, confirmed_delivery_date, schedule_line_quantity)
+          - outbound_delivery_headers (outbound_delivery, sales_order, actual_goods_movement_date, delivery_date, ship_to_party, shipping_point)
+          - outbound_delivery_items (outbound_delivery, outbound_delivery_item, product, actual_delivered_qty, base_unit, sales_order, sales_order_item)
+          - billing_document_headers (billing_document, sales_org, distribution_channel, billing_type, payer, document_date, net_value, currency, created_by_user)
+          - billing_document_items  (billing_document, billing_document_item, sales_order, sales_order_item, product, billing_quantity, base_unit, net_value, currency)
+          - billing_document_cancellations (billing_document, cancellation_billing_document, cancellation_date)
+          - payments_accounts_receivable (accounting_document, company_code, fiscal_year, customer, amount, currency, document_date, clearing_date, payment_reference)
+          - journal_entry_items_accounts_receivable (accounting_document, line_item, company_code, fiscal_year, customer, gl_account, amount, currency, document_date, assignment)
+
         Query: {query}
         """
         

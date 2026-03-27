@@ -113,9 +113,11 @@ Question: {query}"""
             return {"error": results[0]["error"], "sql": sql_query}
 
         # Even if data is empty, we MUST return 'data: []' to keep the frontend happy
+        message = f"Found {len(results)} results." if results else "No results found for your query."
         return {
+            "answer": message,
             "data": results if results else [],
-            "message": f"Found {len(results)} results." if results else "No results found for your query.",
+            "message": message,
             "sql": sql_query
         }
 

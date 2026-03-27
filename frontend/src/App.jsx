@@ -130,14 +130,21 @@ const extractAnswer = (data) => {
   if (!data) return "No response received.";
   // Clean answer field
   if (data.answer && typeof data.answer === "string") return data.answer;
+  if (data.message && typeof data.message === "string") return data.message;
+  
   // Backend error field
   if (data.error && typeof data.error === "string") {
     if (data.error.includes("429") || data.error.toLowerCase().includes("quota"))
       return "⚠️ AI quota exceeded. Please wait a moment and try again.";
     if (data.error.toLowerCase().includes("rate"))
       return "⚠️ Rate limit hit. Please slow down and retry shortly.";
-    return `⚠️ ${data.error.split("."[0]).slice(0, 120)}`;
+    return `⚠️ ${data.error}`;
   }
+
+  if (Array.isArray(data.data)) {
+    return `Found ${data.data.length} results.`;
+  }
+
   return "No answer returned.";
 };
 

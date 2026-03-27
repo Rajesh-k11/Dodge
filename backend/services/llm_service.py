@@ -62,6 +62,34 @@ def _generate_with_retry(prompt: str, max_retries: int = 2) -> str:
             else:
                 raise
 
+def _narrate_results(user_query: str, rows: list) -> str:
+    """Turn database rows into a helpful natural language summary."""
+    if not rows:
+        return f"I searched the database for your request but couldn't find any matching records."
+    
+    # Send a sample of the data to the LLM for narration
+    sample_data = rows[:15]
+    total_count = len(rows)
+    
+    prompt = f"""You are a professional SAP Order-to-Cash (O2C) Intelligence assistant.
+The user asked: "{user_query}"
+The database returned {total_count} results. Here is a sample of the data:
+{sample_data}
+
+Provide a concise, helpful, and professional summary of these findings.
+- If only one or two items were found, describe them specifically.
+- If many items were found, summarize the key highlights or trends.
+- Mention that there are {total_count} total results if it's more than the sample.
+- Use bold text and bullet points for clarity.
+- Stay focused on the business context (Orders, Customers, Products, etc.).
+- Be brief (max 3-4 sentences)."""
+    
+    try:
+        return _generate_with_retry(prompt)
+    except Exception as e:
+        logger.error(f"[llm] Narration failed: {e}")
+        return f"I found {total_count} results matching your request. You can see them visualized in the graph."
+
 def ask_database(query: str) -> dict:
     """Convert natural-language query → SQL → execute → return JSON."""
     if not query or not str(query).strip():
@@ -112,12 +140,14 @@ Question: {query}"""
         if results and len(results) == 1 and "error" in results[0]:
             return {"error": results[0]["error"], "sql": sql_query}
 
+        # Generate a natural language summary of the results
+        summary = _narrate_results(query, results)
+
         # Even if data is empty, we MUST return 'data: []' to keep the frontend happy
-        message = f"Found {len(results)} results." if results else "No results found for your query."
         return {
-            "answer": message,
+            "answer": summary,
             "data": results if results else [],
-            "message": message,
+            "message": summary,
             "sql": sql_query
         }
 
